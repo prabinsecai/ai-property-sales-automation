@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root { color-scheme: light; }
+body { @apply bg-sand text-ink antialiased; }
+button, input, select, textarea { @apply outline-none; }
+*:focus-visible { @apply ring-2 ring-teal ring-offset-2; }
