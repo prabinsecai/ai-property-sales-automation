@@ -51,7 +51,8 @@ async def health() -> dict[str, str]:
 
 @app.get("/properties", response_model=PropertyList)
 async def properties(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),
-                     city: str | None = None, suburb: str | None = None, state: str | None = None,
+                     query: str | None = None, city: str | None = None,
+                     suburb: str | None = None, state: str | None = None,
                      property_type: str | None = None, min_price: float | None = Query(None, ge=0),
                      max_price: float | None = Query(None, ge=0),
                      min_bedrooms: int | None = Query(None, ge=0),
@@ -61,14 +62,19 @@ async def properties(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1
                      parking_required: bool | None = None, pet_friendly: bool | None = None,
                      availability_status: str | None = None,
                      session: AsyncSession = Depends(get_session)):
-    request = SearchRequest(city=city, suburb=suburb, state=state, property_type=property_type,
+    request = SearchRequest(query=query, city=city, suburb=suburb, state=state,
+                            property_type=property_type,
                             min_price=min_price, max_price=max_price,
                             min_bedrooms=min_bedrooms, max_bedrooms=max_bedrooms,
                             bedrooms=bedrooms, bathrooms=bathrooms,
                             parking_required=parking_required, pet_friendly=pet_friendly,
                             availability_status=availability_status,
                             limit=page * page_size)
-    rows, total = await structured_search(session, request.model_copy(update={}))
+    if query:
+        ranked, total = await natural_search(session, request)
+        rows = [property_item for property_item, _ in ranked]
+    else:
+        rows, total = await structured_search(session, request.model_copy(update={}))
     rows = rows[(page - 1) * page_size: page * page_size]
     return PropertyList(items=[output(p) for p in rows], total=total, page=page, page_size=page_size)
 

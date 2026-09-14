@@ -16,14 +16,18 @@ def understand_query(text: str, prior_entities: dict[str, object] | None = None)
         return QueryUnderstanding("unsupported", 0.99, {}, True)
     if any(x in q for x in ("schedule", "inspection", "viewing", "tour")):
         intent = "inspection"
-    elif any(x in q for x in ("rent", "price", "cost", "budget")):
-        intent = "pricing"
     elif any(x in q for x in ("buy", "purchase", "property", "home", "house", "apartment")):
         intent = "property_search"
+    elif any(x in q for x in ("rent", "price", "cost", "budget")):
+        intent = "pricing"
     else:
         intent = "general"
     entities: dict[str, object] = {}
-    name = re.search(r"\b(?:my name is|i am|i'm)\s+([A-Za-z][A-Za-z -]{1,60})", text, re.I)
+    name = re.search(
+        r"\b(?:my name is|i am|i'm)\s+(?!looking\b)([A-Za-z][A-Za-z -]{1,60})",
+        text,
+        re.I,
+    )
     if name:
         entities["name"] = name.group(1).strip(" .,")
     email = re.search(r"[\w.+-]+@[\w.-]+\.\w+", text)
@@ -51,7 +55,12 @@ def understand_query(text: str, prior_entities: dict[str, object] | None = None)
             entities["property_type"] = kind
     if "parking" in q or "garage" in q:
         entities["parking_required"] = True
-    location = re.search(r"\b(?:in|near|around)\s+([A-Za-z][A-Za-z -]{1,40})", text, re.I)
+    location = re.search(
+        r"\b(?:in|near|around)\s+([A-Za-z][A-Za-z'-]*(?:\s+[A-Za-z][A-Za-z'-]*){0,3}?)"
+        r"(?=\s+(?:with|and|under|for|near|that|which|please|can)\b|[?.!,]|$)",
+        text,
+        re.I,
+    )
     if location:
         entities["city"] = location.group(1).strip(" .,")
     if prior_entities:

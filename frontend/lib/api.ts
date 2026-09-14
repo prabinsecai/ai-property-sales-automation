@@ -6,7 +6,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json();
 }
 export const api = {
-  listProperties: (params: URLSearchParams) => request<PropertyList>(`/properties?${params}`),
+  listProperties: (params: URLSearchParams, init?: RequestInit) => request<PropertyList>(`/properties?${params}`, init),
   getProperty: (id: string) => request<Property>(`/properties/${encodeURIComponent(id)}`),
   search: (body: Record<string, unknown>) => request<SearchResponse>("/properties/search", { method: "POST", body: JSON.stringify(body) }),
   chat: (message: string, conversation_id?: string) => request<ChatResponse>("/chat", { method: "POST", body: JSON.stringify({ message, conversation_id }) }),

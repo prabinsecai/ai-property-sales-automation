@@ -72,6 +72,40 @@ async def test_contact_followup_is_lead_capture_without_escalation(client):
     assert body["escalated"] is False
 
 
+@pytest.mark.asyncio
+async def test_sydney_search_filters_and_chat_retrieval(client):
+    async with SessionLocal() as session:
+        session.add(Property(
+            property_id="SYD-1", title="Sydney Harbour Apartment",
+            description="Bright apartment near transit", city="Sydney",
+            suburb="Surry Hills", address="1 Harbour Road", state="NSW",
+            property_type="apartment", price=700000, weekly_rent=650, bedrooms=2,
+            bathrooms=1, area_sqft=900, year_built=2020, amenities="balcony",
+            nearby_facilities="transit", parking=1, pet_policy="allowed",
+        ))
+        await session.commit()
+
+    search_response = await client.get("/properties", params={
+        "query": "Sydney", "city": "Sydney", "property_type": "Apartment",
+        "page_size": 50,
+    })
+    search_body = search_response.json()
+    assert search_body["total"] == 1
+    assert search_body["items"][0]["property_id"] == "SYD-1"
+
+    response = await client.post("/chat", json={
+        "message": "I'm looking for a 2 bedroom apartment in Sydney "
+                   "with a weekly rent under $800. Can you recommend some properties?",
+    })
+    body = response.json()
+    assert body["intent"] == "property_search"
+    assert body["source_references"][0]["source_id"] == "SYD-1"
+    assert "Sydney Harbour Apartment" in body["message"]
+    assert "Surry Hills, Sydney, NSW" in body["message"]
+    assert "2 bedrooms" in body["message"]
+    assert "$650" in body["message"]
+
+
 def test_provider_config_and_hallucination_guard(monkeypatch):
     from app.config import get_settings
     from app.llm import get_llm_provider

@@ -73,7 +73,7 @@ async def structured_search(session: AsyncSession, request: SearchRequest) -> tu
 async def natural_search(session: AsyncSession, request: SearchRequest) -> tuple[list[tuple[Property, float]], int]:
     """Small offline fallback ranker; production retrieval can use the vector endpoint."""
     request = parse_natural_query(request)
-    base = apply_filters(select(Property).where(Property.is_available.is_(True)), request)
+    base = apply_filters(select(Property).where(Property.is_available.is_(True)), request.model_copy(update={"query": None}))
     candidates = (await session.scalars(base)).all()
     terms = set(re.findall(r"[a-z0-9]+", (request.query or "").lower()))
     ranked = []
@@ -82,4 +82,6 @@ async def natural_search(session: AsyncSession, request: SearchRequest) -> tuple
         score = len(terms & haystack) / max(len(terms), 1)
         ranked.append((item, score))
     ranked.sort(key=lambda pair: (-pair[1], pair[0].price))
-    return ranked[:request.limit], len(candidates)
+    if terms:
+        ranked = [pair for pair in ranked if pair[1] > 0]
+    return ranked[:request.limit], len(ranked)
